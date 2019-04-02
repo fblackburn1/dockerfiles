@@ -7,8 +7,8 @@ See https://github.com/nextcloud/news-updater
 ## Configuration
 
 * `NEXTCLOUD_URL`: The nextcloud url with a valid certificate (required)
-* `NEXTCLOUD_USER`: The nextcloud user
-* `NEXTCLOUD_TOKEN`: The nextcloud user token/password.
+* `NEXTCLOUD_USER`: The nextcloud user (required)
+* `NEXTCLOUD_TOKEN`: The nextcloud user token/password (required)
 
 
 ## Build Image
