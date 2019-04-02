@@ -1,4 +1,4 @@
-FROM python:3.7-stretch-slim
+FROM python:3.7-slim-stretch
 
 ARG NEXTCLOUD_NEWS_UPDATER_VERSION=10.0.1
 LABEL nextcloud-news-updater-version=$NEXTCLOUD_NEWS_UPDATER_VERSION
