@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+# Copyright 2019 Francois Blackburn
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+import os
+import re
+import responder
+
+api = responder.API()
+
+API_LISTEN = os.getenv('API_LISTEN', '0.0.0.0')
+API_PORT = int(os.getenv('API_PORT', 6789))
+NEXTCLOUD_PATH = os.getenv('NEXTCLOUD_PATH', '/var/www/html')
+
+CONFIG_FILE = os.path.join(NEXTCLOUD_PATH, 'config/config.php')
+MAINTENANCE_REGEX = r'(^.*maintenance.*)(?:false|true)(.*$)'
+
+
+@api.route("/api/maintenance")
+class Maintenance:
+
+    async def on_put(self, req, resp):
+        body = await req.media()
+        state = 'true' if body.get('enabled') else 'false'
+        self._write_state(state)
+
+        resp.status_code = 204
+
+    def _write_state(self, state):
+        with open(CONFIG_FILE, 'r+') as f:
+            content = f.read()
+            output = re.sub(
+                MAINTENANCE_REGEX,
+                r'\1{}\2'.format(state),
+                content,
+                flags=re.MULTILINE,
+            )
+            f.seek(0)
+            f.write(output)
+            f.truncate()
+
+
+if __name__ == '__main__':
+    api.run(address=API_LISTEN, port=API_PORT, debug=True)
