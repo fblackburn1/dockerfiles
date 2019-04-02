@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+nextcloud-news-updater "${NEXTCLOUD_URL}" --user "${NEXTCLOUD_USER}" --password "${NEXTCLOUD_TOKEN}"
