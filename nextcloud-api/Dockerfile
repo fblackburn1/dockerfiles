@@ -1,6 +1,6 @@
 FROM python:3.7-slim-stretch
 
-ARG RESPONDER_VERSION=1.2.0
+ARG RESPONDER_VERSION=1.3.0
 LABEL responder-version=$RESPONDER_VERSION
 
 RUN true \
