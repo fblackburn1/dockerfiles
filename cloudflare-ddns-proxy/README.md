@@ -30,6 +30,7 @@ curl -X PUT --header 'Content-Type: application/json' \
 ## TODO
 
 * IPv6
+* DEBUG option and more debug log
 
 
 ## Build Image
