@@ -19,6 +19,7 @@ api = responder.API()
 API_LISTEN = os.getenv('API_LISTEN', '0.0.0.0')
 API_PORT = int(os.getenv('API_PORT', 6789))
 AUTHORIZATIONS = os.getenv('AUTHORIZATIONS', '')
+IP_HEADER = os.getenv('IP_AUTODETECT_HEADER', 'X-Real-IP')
 
 zones = {}
 cloudflare = CloudFlare.CloudFlare()
@@ -70,7 +71,7 @@ class RecordSchema(Schema):
     proxied = fields.Constant(False)  # disable all cloudflare features
 
     name = fields.String(required=True)  # HOST
-    content = fields.String(required=True)  # IP
+    content = fields.String(missing=None)  # IP
 
 
 class ZoneSchema(Schema):
@@ -106,9 +107,13 @@ class Zones:
             resp.status_code = 401
             return
 
-        # TODO extract IP (if not specified) from req.headers.get('host')
-        # Maybe some things to do with proxy or set new header with nginx
-        # Or allow custom header name with env variable
+        if not form['record']['content']:
+            content = req.headers.get(IP_HEADER)
+            if not content:
+                resp.media = {'error': 'Cannot extract IP from header'}
+                resp.status_code = 400
+                return
+            form['record']['content'] = content
 
         if zones.get(form['name']) == form['record']['content']:
             resp.status_code = 204
@@ -149,7 +154,7 @@ class Zones:
 
         logger.debug('Creating dns record')
         updated_record = cloudflare.zones.dns_records.post(zone_id, data=form['record'])
-        zones[zone['name']] = updated_record['context']
+        zones[zone['name']] = updated_record['content']
         resp.status_code = 204
 
     def _get_zone(self, name):
