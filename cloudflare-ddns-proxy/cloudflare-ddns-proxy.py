@@ -1,0 +1,167 @@
+#!/usr/bin/env python
+# Copyright 2019 Francois Blackburn
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+import json
+import logging
+import os
+
+import CloudFlare
+import responder
+
+from marshmallow import Schema, fields
+from marshmallow.validate import Length
+from marshmallow.exceptions import ValidationError
+
+logger = logging.getLogger(__name__)
+api = responder.API()
+
+API_LISTEN = os.getenv('API_LISTEN', '0.0.0.0')
+API_PORT = int(os.getenv('API_PORT', 6789))
+AUTHORIZATIONS = os.getenv('AUTHORIZATIONS', '')
+
+zones = {}
+cloudflare = CloudFlare.CloudFlare()
+
+
+class Authorizations(list):
+
+    def token_is_valid(self, token):
+        if token is None:
+            return False
+
+        for authorization in self:
+            if authorization.token == token:
+                return True
+        return False
+
+
+class Authorization:
+
+    def __init__(self, zone, record, token):
+        self.zone = zone
+        self.record = record
+        self.token = token
+
+    def __eq__(self, other):
+        return (
+            self.zone == other.zone
+            and self.record == other.record
+            and self.token == other.token
+        )
+
+    def __ne__(self, other):
+        return not self == other
+
+
+authorizations = Authorizations()
+for authorization_raw in AUTHORIZATIONS.split(','):
+    if len(authorization_raw.split(':')) != 3:
+        logger.critical('Invalid AUTHORIZATIONS: %s', authorization_raw)
+        exit()
+    zone, record, token = authorization_raw.split(':')
+    authorizations.append(Authorization(zone, record, token))
+
+
+class RecordSchema(Schema):
+    type = fields.Constant('A')
+    ttl = fields.Constant(1)  # 1 = automatic
+    priority = fields.Constant(10)
+    proxied = fields.Constant(False)  # disable all cloudflare features
+
+    name = fields.String(required=True)  # HOST
+    content = fields.String(required=True)  # IP
+
+
+class ZoneSchema(Schema):
+    name = fields.String(validate=Length(min=1, max=255), required=True)
+    record = fields.Nested(RecordSchema, required=True)
+
+
+@api.route("/api/zones")
+class Zones:
+
+    async def on_put(self, req, resp):
+        token = req.headers.get('X-Auth-Token')
+        if not authorizations.token_is_valid(token):
+            resp.status_code = 401
+            return
+
+        try:
+            body = await req.media('json')
+        except json.decoder.JSONDecodeError:
+            resp.media = {'error': 'Cannot decode json body'}
+            resp.status_code = 400
+            return
+
+        try:
+            form = ZoneSchema().load(body)
+        except ValidationError as e:
+            resp.media = e.normalized_messages()
+            resp.status_code = 400
+            return
+
+        required_authorization = Authorization(form['name'], form['record']['name'], token)
+        if required_authorization not in authorizations:
+            resp.status_code = 401
+            return
+
+        # TODO extract IP (if not specified) from req.headers.get('host')
+        # Maybe some things to do with proxy or set new header with nginx
+        # Or allow custom header name with env variable
+
+        if zones.get(form['name']) == form['record']['content']:
+            resp.status_code = 204
+            return
+
+        zone = self._get_zone(form['name'])
+        if not zone:
+            resp.media = {'error': 'Zone not found: {}'.format(form['name'])}
+            resp.status_code = 400
+            return
+
+        zone_id = zone['id']
+        records = cloudflare.zones.dns_records.get(zone_id, params={'name': form['record']['name']})
+
+        record_a = self._find_record(records, 'A')
+        if record_a:
+            logger.debug('Updating existing dns record')
+            updated_record = cloudflare.zones.dns_records.put(
+                zone_id,
+                record_a['id'],
+                data=form['record'],
+            )
+            zones[zone['name']] = updated_record['content']
+            resp.status_code = 204
+            return
+
+        record_cname = self._find_record(records, 'CNAME')
+        if record_cname:
+            error = 'CNAME entry found for {host}. Remove it or set HOST={other} instead.'
+            resp.media = {
+                'error': error.format(
+                    host=zone['record']['name'],
+                    other=record_cname['content']
+                )
+            }
+            resp.status_code = 400
+            return
+
+        logger.debug('Creating dns record')
+        updated_record = cloudflare.zones.dns_records.post(zone_id, data=form['record'])
+        zones[zone['name']] = updated_record['context']
+        resp.status_code = 204
+
+    def _get_zone(self, name):
+        zones = cloudflare.zones.get(params={'name': name})
+        for zone in zones:
+            return zone
+
+    def _find_record(self, records, type_):
+        for record in records:
+            if record['type'] == type_:
+                return record
+
+
+if __name__ == '__main__':
+    api.run(address=API_LISTEN, port=API_PORT, debug=True)
