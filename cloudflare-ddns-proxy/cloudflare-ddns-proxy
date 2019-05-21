@@ -13,14 +13,17 @@ from marshmallow import Schema, fields
 from marshmallow.validate import Length
 from marshmallow.exceptions import ValidationError
 
-logger = logging.getLogger(__name__)
-api = responder.API()
-
 API_LISTEN = os.getenv('API_LISTEN', '0.0.0.0')
 API_PORT = int(os.getenv('API_PORT', 6789))
 AUTHORIZATIONS = os.getenv('AUTHORIZATIONS', '')
 IP_HEADER = os.getenv('IP_AUTODETECT_HEADER', 'X-Real-IP')
+DEBUG = os.getenv('DEBUG', '').lower() == 'true'
 
+logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
+if DEBUG:
+    logger.setLevel(logging.DEBUG)
+api = responder.API()
 zones = {}
 cloudflare = CloudFlare.CloudFlare()
 
@@ -116,6 +119,12 @@ class Zones:
             form['record']['content'] = content
 
         if zones.get(form['name']) == form['record']['content']:
+            logger.debug(
+                '[%s] Already up-to-date: %s -> %s',
+                req.headers.get(IP_HEADER),
+                form['record']['name'],
+                form['record']['content'],
+            )
             resp.status_code = 204
             return
 
@@ -130,7 +139,12 @@ class Zones:
 
         record_a = self._find_record(records, 'A')
         if record_a:
-            logger.debug('Updating existing dns record')
+            logger.debug(
+                '[%s] Update record: %s -> %s',
+                req.headers.get(IP_HEADER),
+                form['record']['name'],
+                form['record']['content'],
+            )
             updated_record = cloudflare.zones.dns_records.put(
                 zone_id,
                 record_a['id'],
@@ -152,7 +166,12 @@ class Zones:
             resp.status_code = 400
             return
 
-        logger.debug('Creating dns record')
+        logger.debug(
+            '[%s] Create record: %s -> %s',
+            req.headers.get(IP_HEADER),
+            form['record']['name'],
+            form['record']['content'],
+        )
         updated_record = cloudflare.zones.dns_records.post(zone_id, data=form['record'])
         zones[zone['name']] = updated_record['content']
         resp.status_code = 204
@@ -169,4 +188,4 @@ class Zones:
 
 
 if __name__ == '__main__':
-    api.run(address=API_LISTEN, port=API_PORT, debug=True)
+    api.run(address=API_LISTEN, port=API_PORT, debug=DEBUG)

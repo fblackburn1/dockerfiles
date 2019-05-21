@@ -13,6 +13,7 @@ cloudflare API key to different zone. Some logic are inspired by [joshuaavalon][
   `example.com:example.com:1a2b3c,example.com:toto.example.com:4d5e6f`)
 * `API_LISTEN`: The listen address of the server (default: 0.0.0.0)
 * `API_PORT`: The port of the server (default: 6789)
+* `DEBUG`: Activate the debug (default: false)
 * `IP_HEADER`: The header to get when no content is provided and IP must be extracted automatically
   (default: X-Real-IP)
 
@@ -30,7 +31,6 @@ curl -X PUT --header 'Content-Type: application/json' \
 ## TODO
 
 * IPv6
-* DEBUG option and more debug log
 
 
 ## Build Image
