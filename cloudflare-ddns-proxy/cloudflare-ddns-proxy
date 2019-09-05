@@ -139,7 +139,7 @@ class Zones:
 
         record_a = self._find_record(records, 'A')
         if record_a:
-            logger.debug(
+            logger.info(
                 '[%s] Update record: %s -> %s',
                 req.headers.get(IP_HEADER),
                 form['record']['name'],
@@ -166,7 +166,7 @@ class Zones:
             resp.status_code = 400
             return
 
-        logger.debug(
+        logger.info(
             '[%s] Create record: %s -> %s',
             req.headers.get(IP_HEADER),
             form['record']['name'],
