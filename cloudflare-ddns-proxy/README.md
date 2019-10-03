@@ -1,7 +1,9 @@
 # cloudflare-ddns-proxy
 
-Image to proxy ddns mechanic with cloudflare api. The main reason of this proxy is to avoid to share
-cloudflare API key to different zone. Some logic are inspired by [joshuaavalon][joshua-cloudflare]
+NOTE: Since 30 august 2019, Cloudflare support API token which depreciate the purpose of this image
+
+Image to proxy ddns mechanic with Cloudflare api. The main reason of this proxy is to avoid to share
+Cloudflare API key to different zone. Some logic are inspired by [joshuaavalon][joshua-cloudflare]
 
 
 ## Configuration
