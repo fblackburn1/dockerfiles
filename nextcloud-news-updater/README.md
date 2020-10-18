@@ -13,4 +13,4 @@ See https://github.com/nextcloud/news-updater
 
 ## Build Image
 
-`docker build -t fblackburn/nextcloud-news-updater --build-arg "NEXTCLOUD_NEWS_UPDATER_VERSION=10.0.1" .`
+`docker build -t fblackburn/nextcloud-news-updater --build-arg "NEXTCLOUD_NEWS_UPDATER_VERSION=11.0.0" .`
