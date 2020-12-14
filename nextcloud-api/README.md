@@ -15,9 +15,13 @@ Image to expose nextcloud configuration through a REST API.
 
 To enable or disable the maintenance mode of nextcloud:
 
-`curl -X PUT -H "Accept: application/json" -H "Content-Type: application/json" -d "{"enabled": true}" http://nextcloud-api:6789/api/maintenance`
+```sh
+curl -X PUT -H "Accept: application/json" -H "Content-Type: application/json" -d "{"enabled": true}" http://nextcloud-api:6789/api/maintenance
+```
 
 
 ## Build Image
 
-`docker build -t fblackburn/nextcloud-api --build-arg "RESPONDER_VERSION=1.3.0" .`
+```sh
+docker build -t fblackburn/nextcloud-api --build-arg "FASTAPI_VERSION=0.62.0" --build-args "UVICORN_VERSION=0.13.1" .
+```

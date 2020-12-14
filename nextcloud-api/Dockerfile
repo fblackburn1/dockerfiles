@@ -1,15 +1,11 @@
 FROM python:3.7-slim-stretch
 
-ARG RESPONDER_VERSION=1.3.0
-LABEL responder-version=$RESPONDER_VERSION
+ARG FASTAPI_VERSION=0.62.0
+ARG UVICORN_VERSION=0.13.1
+LABEL fastapi-version=$FASTAPI_VERSION
+LABEL uvicorn-version=$UVICORN_VERSION
 
-RUN true \
-    && apt-get update \
-    && apt-get install --yes gcc \
-    && pip install responder==$RESPONDER_VERSION \
-    && apt-get purge --yes gcc \
-    && apt-get autoremove --yes \
-    && apt-get clean
+RUN pip install fastapi==$FASTAPI_VERSION uvicorn==$UVICORN_VERSION
 
 COPY ./nextcloud-api /usr/local/src/nextcloud-api
 

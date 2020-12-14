@@ -1,12 +1,14 @@
 #!/usr/bin/env python
-# Copyright 2019 Francois Blackburn
+# Copyright 2019-2020 Francois Blackburn
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import os
 import re
-import responder
+import uvicorn
+from fastapi import Body, FastAPI
+from pydantic import BaseModel, Field
 
-api = responder.API()
+app = FastAPI()
 
 API_LISTEN = os.getenv('API_LISTEN', '0.0.0.0')
 API_PORT = int(os.getenv('API_PORT', 6789))
@@ -16,29 +18,29 @@ CONFIG_FILE = os.path.join(NEXTCLOUD_PATH, 'config/config.php')
 MAINTENANCE_REGEX = r'(^.*maintenance.*)(?:false|true)(.*$)'
 
 
-@api.route("/api/maintenance")
-class Maintenance:
+class Maintenance(BaseModel):
+    enabled: bool = Field(..., title='set nextcloud into maintenance mode')
 
-    async def on_put(self, req, resp):
-        body = await req.media()
-        state = 'true' if body.get('enabled') else 'false'
-        self._write_state(state)
 
-        resp.status_code = 204
+@app.put("/api/maintenance")
+async def update_maintenance(maintenance: Maintenance = Body(...)):
+    state = 'true' if maintenance.enabled else 'false'
+    _write_state(state)
 
-    def _write_state(self, state):
-        with open(CONFIG_FILE, 'r+') as f:
-            content = f.read()
-            output = re.sub(
-                MAINTENANCE_REGEX,
-                r'\1{}\2'.format(state),
-                content,
-                flags=re.MULTILINE,
-            )
-            f.seek(0)
-            f.write(output)
-            f.truncate()
+
+def _write_state(state: str):
+    with open(CONFIG_FILE, 'r+') as f:
+        content = f.read()
+        output = re.sub(
+            MAINTENANCE_REGEX,
+            r'\1{}\2'.format(state),
+            content,
+            flags=re.MULTILINE,
+        )
+        f.seek(0)
+        f.write(output)
+        f.truncate()
 
 
 if __name__ == '__main__':
-    api.run(address=API_LISTEN, port=API_PORT, debug=True)
+    uvicorn.run(app, host=API_LISTEN, port=API_PORT, log_level="debug")
